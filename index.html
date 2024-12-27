@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foctur Messenger</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .chat-window {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    .message {
+      padding: 10px;
+      margin: 5px 0;
+      background-color: #f1f1f1;
+      border-radius: 5px;
+    }
+    .message-reply {
+      padding: 10px;
+      margin: 5px 0;
+      background-color: #e1e1e1;
+      border-radius: 5px;
+      margin-left: 20px;
+    }
+    input[type="text"] {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 5px 0;
+    }
+    button {
+      padding: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Foctur Messenger</h1>
+
+  <div class="chat-window">
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDF6DtnEXp8PWqCH2q4JwRJxKLmP3o8d1U",
+      authDomain: "foncur-messenger.firebaseapp.com",
+      projectId: "foncur-messenger",
+      storageBucket: "foncur-messenger.firebasestorage.app",
+      messagingSenderId: "419906580486", 
+      appId: "1:419906580486:web:1ec6fd28cc0f7fe6b39387",
+      measurementId: "G-04EBFCBY5Z"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // Authentication function
+    function signIn() {
+      auth.signInAnonymously()
+        .then(() => {
+          console.log("Signed in anonymously");
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+
+    // Send message function
+    function sendMessage() {
+      const messageInput = document.getElementById("messageInput");
+      const message = messageInput.value.trim();
+      
+      if (message) {
+        const messageData = {
+          message: message,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          uid: auth.currentUser ? auth.currentUser.uid : "guest",
+          replyTo: null
+        };
+
+        db.collection("messages").add(messageData);
+        messageInput.value = '';
+      }
+    }
+
+    // Send reply function
+    function sendReply(replyToId) {
+      const replyMessageInput = document.getElementById("messageInput");
+      const replyMessage = replyMessageInput.value.trim();
+
+      if (replyMessage) {
+        const messageData = {
+          message: replyMessage,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          uid: auth.currentUser ? auth.currentUser.uid : "guest",
+          replyTo: replyToId
+        };
+
+        db.collection("messages").add(messageData);
+        replyMessageInput.value = '';
+      }
+    }
+
+    // Fetch and display messages
+    function loadMessages() {
+      db.collection("messages")
+        .orderBy("timestamp")  // Order by timestamp to get messages in chronological order
+        .onSnapshot((snapshot) => {
+          const messagesDiv = document.getElementById("messages");
+          messagesDiv.innerHTML = '';  // Clear current messages before loading new ones
+
+          snapshot.forEach((doc) => {
+            const messageData = doc.data();
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message");
+            messageElement.innerHTML = `
+              <strong>User ${messageData.uid}</strong>: ${messageData.message}
+              <button onclick="replyToMessage('${doc.id}')">Reply</button>
+            `;
+            messagesDiv.appendChild(messageElement);
+
+            // Show replies if any
+            if (messageData.replyTo) {
+              const replyMessageElement = document.createElement("div");
+              replyMessageElement.classList.add("message-reply");
+              replyMessageElement.innerHTML = `
+                <strong>User ${messageData.uid}</strong> (Reply): ${messageData.message}
+              `;
+              messagesDiv.appendChild(replyMessageElement);
+            }
+          });
+        });
+    }
+
+    // Open reply input box
+    function replyToMessage(messageId) {
+      const replyMessageInput = document.getElementById("messageInput");
+      replyMessageInput.placeholder = "Type your reply...";
+      replyMessageInput.focus();
+
+      const replyButton = document.createElement("button");
+      replyButton.innerText = "Send Reply";
+      replyButton.onclick = () => sendReply(messageId);
+      document.body.appendChild(replyButton);
+    }
+
+    // Initialize app
+    signIn();
+    loadMessages();
+  </script>
+</body>
+</html>
